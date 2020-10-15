@@ -1,0 +1,141 @@
+{
+   "plus_code" : {
+      "compound_code" : "2222+22 Akomkada, Cameroon",
+      "global_code" : "6FPJ2222+22"
+   },
+   "results" : [
+      {
+         "address_components" : [
+            {
+               "long_name" : "Mefou-et-Afamba",
+               "short_name" : "Mefou-et-Afamba",
+               "types" : [ "administrative_area_level_2", "political" ]
+            },
+            {
+               "long_name" : "Centre",
+               "short_name" : "Centre",
+               "types" : [ "administrative_area_level_1", "political" ]
+            },
+            {
+               "long_name" : "Cameroon",
+               "short_name" : "CM",
+               "types" : [ "country", "political" ]
+            }
+         ],
+         "formatted_address" : "Mefou-et-Afamba, Cameroon",
+         "geometry" : {
+            "bounds" : {
+               "northeast" : {
+                  "lat" : 4.3039605,
+                  "lng" : 12.1172333
+               },
+               "southwest" : {
+                  "lat" : 3.5298695,
+                  "lng" : 11.5040589
+               }
+            },
+            "location" : {
+               "lat" : 3.9038615,
+               "lng" : 11.7979613
+            },
+            "location_type" : "APPROXIMATE",
+            "viewport" : {
+               "northeast" : {
+                  "lat" : 4.3039605,
+                  "lng" : 12.1172333
+               },
+               "southwest" : {
+                  "lat" : 3.5298695,
+                  "lng" : 11.5040589
+               }
+            }
+         },
+         "place_id" : "ChIJF_NBZl_yixAR4KCodaWzozQ",
+         "types" : [ "administrative_area_level_2", "political" ]
+      },
+      {
+         "address_components" : [
+            {
+               "long_name" : "Centre",
+               "short_name" : "Centre",
+               "types" : [ "administrative_area_level_1", "political" ]
+            },
+            {
+               "long_name" : "Cameroon",
+               "short_name" : "CM",
+               "types" : [ "country", "political" ]
+            }
+         ],
+         "formatted_address" : "Centre, Cameroon",
+         "geometry" : {
+            "bounds" : {
+               "northeast" : {
+                  "lat" : 6.262233999999999,
+                  "lng" : 13.248086
+               },
+               "southwest" : {
+                  "lat" : 3.139809,
+                  "lng" : 10.2618951
+               }
+            },
+            "location" : {
+               "lat" : 4.6298411,
+               "lng" : 11.7068294
+            },
+            "location_type" : "APPROXIMATE",
+            "viewport" : {
+               "northeast" : {
+                  "lat" : 6.262233999999999,
+                  "lng" : 13.248086
+               },
+               "southwest" : {
+                  "lat" : 3.139809,
+                  "lng" : 10.2618951
+               }
+            }
+         },
+         "place_id" : "ChIJd3maMHrPixARaSVjg0STQEc",
+         "types" : [ "administrative_area_level_1", "political" ]
+      },
+      {
+         "address_components" : [
+            {
+               "long_name" : "Cameroon",
+               "short_name" : "CM",
+               "types" : [ "country", "political" ]
+            }
+         ],
+         "formatted_address" : "Cameroon",
+         "geometry" : {
+            "bounds" : {
+               "northeast" : {
+                  "lat" : 13.083335,
+                  "lng" : 16.1944081
+               },
+               "southwest" : {
+                  "lat" : 1.6559,
+                  "lng" : 8.3936001
+               }
+            },
+            "location" : {
+               "lat" : 7.369721999999999,
+               "lng" : 12.354722
+            },
+            "location_type" : "APPROXIMATE",
+            "viewport" : {
+               "northeast" : {
+                  "lat" : 13.083335,
+                  "lng" : 16.1944081
+               },
+               "southwest" : {
+                  "lat" : 1.6559,
+                  "lng" : 8.3936001
+               }
+            }
+         },
+         "place_id" : "ChIJIQ8-cFM3YRARU5uCmUXEAys",
+         "types" : [ "country", "political" ]
+      }
+   ],
+   "status" : "OK"
+}
