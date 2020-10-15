@@ -96,7 +96,7 @@ def reading_block():
                     txt2 = str(txt)
                     txt = username + "\n" + txt
                     print("------------post txt------------")
-                    print("user   : @Climentia_nino")
+                    print("user   : " + Twitter_ID)
                     print(username + "\n" + txt)
                     api.update_status(status=txt, in_reply_to_status_id=status_id)
                     print("------------status------------")
@@ -112,6 +112,7 @@ def loading_block():
         consumer_secret = tw_lists[2]
         access_token_key = tw_lists[3]
         access_token_secret = tw_lists[4]
+        Twitter_ID = tw_lists[5]
     auth = tweepy.OAuthHandler(consumer_key, consumer_secret)
     auth.set_access_token(access_token_key, access_token_secret)
     api = tweepy.API(auth)
@@ -131,14 +132,14 @@ def loading_block():
                 if "error" in str(ds_flag) or "error" in str(st_flag) or "error" in str(gif_flag) or "error" in str(map_flag):
                     txt = "error:処理が正常に行われませんでした。"
                     print("------------post txt------------")
-                    print("user   : @Climentia_nino")
+                    print("user   : " + Twitter_ID)
                     print(txt)
                     print("------------status------------")
                 elif ds_flag == "finish":
                     os.remove("place_log.csv")
                     txt = "おめでとうございます!ゴールしました!\n次の目的地を入力してください!"
                     print("------------post txt------------")
-                    print("user   : @Climentia_nino")
+                    print("user   : " + Twitter_ID)
                     print(txt)
                     print("------------status------------")
                     pic_name = "./data/route_map.png"
@@ -169,8 +170,8 @@ def loading_block():
                     pas = (float(kyori_total) / float(distance))*100
                     twee_txt = "ほっぽちゃんは今" + str(name) + "にいます!\n" + str(destination).strip("\n") +"までの残り距離はおよそ" + str(round(nokori/1000, 2)) + "kmでコースの" + str(round(pas, 2)) + "%走りました!"
                     print("------------post txt------------")
-                    print("user   : @Climentia_nino")
-                    print("text   : "+twee_txt)
+                    print("user   : " + Twitter_ID)
+                    print("text   : " + twee_txt)
                     print("------------status------------")
                     api.update_status(status=twee_txt, media_ids=media_ids)
                     tweet = "ほっぽちゃんの現在位置です!"
@@ -178,8 +179,8 @@ def loading_block():
                     api.update_with_media(filename=pic_name, status=tweet)
         else:
             print("------------post txt------------")
-            print("user   : @Climentia_nino")
-            print("text   : "+txt)
+            print("user   : " + Twitter_ID)
+            print("text   : "+ txt)
             print("------------status------------")
             txt = "error:ほっぽちゃんの進んだ距離が分かりません。"
             pic_name = "./street_view/noplace.jpg"
@@ -188,8 +189,8 @@ def loading_block():
         txt = "error:ほっぽちゃんの行き先が決まっていません"
         pic_name = "./street_view/noplace.jpg"
         print("------------post txt------------")
-        print("user   : @Climentia_nino")
-        print("text   : "+txt)
+        print("user   : " + Twitter_ID)
+        print("text   : "+ txt)
         print("------------status------------")
         api.update_with_media(filename=pic_name, status=txt)
 
