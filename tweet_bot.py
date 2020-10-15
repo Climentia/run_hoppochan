@@ -11,7 +11,6 @@ import map_getter
 import place_name
 import time
 import schedule
-Twitter_ID = "Climentia_nino"
 place_path = "./data/place_log.csv"
 twee_path = "./data/twee_log.txt"
 
@@ -23,6 +22,7 @@ def reading_block():
         consumer_secret = tw_lists[2]
         access_token_key = tw_lists[3]
         access_token_secret = tw_lists[4]
+        Twitter_ID = tw_lists[5]
     auth = tweepy.OAuthHandler(consumer_key, consumer_secret)
     auth.set_access_token(access_token_key, access_token_secret)
     api = tweepy.API(auth)
