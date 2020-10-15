@@ -18,11 +18,11 @@ twee_path = "./data/twee_log.txt"
 def reading_block():
     with open("./key/twitter_key.txt", "r") as fr:
         tw_lists = fr.readlines()
-        consumer_key = tw_lists[1]
-        consumer_secret = tw_lists[2]
-        access_token_key = tw_lists[3]
-        access_token_secret = tw_lists[4]
-        Twitter_ID = tw_lists[5]
+        consumer_key = tw_lists[0].strip("\n")
+        consumer_secret = tw_lists[1].strip("\n")
+        access_token_key = tw_lists[2].strip("\n")
+        access_token_secret = tw_lists[3].strip("\n")
+        Twitter_ID = tw_lists[4].strip("\n")
     auth = tweepy.OAuthHandler(consumer_key, consumer_secret)
     auth.set_access_token(access_token_key, access_token_secret)
     api = tweepy.API(auth)
@@ -108,11 +108,11 @@ def loading_block():
     # list = glob.glob("log/*")\
     with open("./key/twitter_key.txt", "r") as fr:
         tw_lists = fr.readlines()
-        consumer_key = tw_lists[1]
-        consumer_secret = tw_lists[2]
-        access_token_key = tw_lists[3]
-        access_token_secret = tw_lists[4]
-        Twitter_ID = tw_lists[5]
+        consumer_key = tw_lists[0]
+        consumer_secret = tw_lists[1]
+        access_token_key = tw_lists[2]
+        access_token_secret = tw_lists[3]
+        Twitter_ID = tw_lists[4]
     auth = tweepy.OAuthHandler(consumer_key, consumer_secret)
     auth.set_access_token(access_token_key, access_token_secret)
     api = tweepy.API(auth)
@@ -196,10 +196,10 @@ def loading_block():
 
 
 def read_main():
-    try:
-        reading_block()
-    except Exception as e:
-        print("error:" + str(e))
+    # try:
+    reading_block()
+    # except Exception as e:
+        # print("error:" + str(e))
 
 
 schedule.every().day.at("22:00").do(loading_block)
