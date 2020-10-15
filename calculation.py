@@ -49,8 +49,9 @@ def dict(txt, username):
             txt = "error:入力が正しい形式ではありません。仕様を確認してもう一度リプライをお願いします。"
             return str(new)
     except Exception as e:
+        print(str(e))
         txt = "calerror:" + str(e)
-        # txt = "error:入力が正しい形式ではありません。仕様を確認してもう一度リプライをお願いします。"
+        txt = "error:入力が正しい形式ではありません。仕様を確認してもう一度リプライをお願いします。"
         print(txt + str(e))
         return txt
 
@@ -90,6 +91,8 @@ def calorie(id, value):
             calorie = round(float(num), 2) * 0.15 * 3
         elif id == "背筋":
             calorie = round(float(num), 2) * 0.27 * 3
+        elif id == "ベンチプレス":
+            calorie = round(float(num), 2) * 3.1
         else:
             calorie = "error"
     elif "km" == unit and j == False:
@@ -97,6 +100,10 @@ def calorie(id, value):
         num = float(num)
         if id == "ウォーキング" or id == "ランニング":
             calorie = round(float(num), 2) * 40.89
+    elif "cal" == unit and j == False:
+        num = re.sub("\\D", "", value)
+        num = float(num)
+        calorie = round(float(num), 2)
     elif j == True:
         num = re.sub("\\D", "", value)
         num = float(num)
