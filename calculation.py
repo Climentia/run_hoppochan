@@ -115,6 +115,8 @@ def calorie(id, value):
             calorie = round(float(num), 2) * 0.15 * 3
         elif id == "背筋":
             calorie = round(float(num), 2) * 0.27 * 3
+        elif id == "ベンチプレス":
+            calorie = round(float(num), 2) * 3.1
         else:
             calorie = "error"
     else:
