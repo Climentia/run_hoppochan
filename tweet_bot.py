@@ -196,13 +196,20 @@ def loading_block():
 
 
 def read_main():
-    # try:
-    reading_block()
-    # except Exception as e:
-        # print("error:" + str(e))
+    try:
+        reading_block()
+    except Exception as e:
+        print("error:" + str(e))
 
 
-schedule.every().day.at("22:00").do(loading_block)
+def load_main():
+    try:
+        loading_block()
+    except Exception as e:
+        print("error:" + str(e))
+
+
+schedule.every().day.at("22:00").do(load_main)
 schedule.every(1).minutes.do(read_main)
 
 while True:
