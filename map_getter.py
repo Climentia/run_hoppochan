@@ -3,7 +3,7 @@ import json
 
 
 def convert():
-    json_open = open("./data/route_latlon.json", "r")
+    json_open = open("./data/route_latlon.json", "r", encoding="utf-8")
     json_load = json.load(json_open)
     route_line = json_load['routes'][0]["overview_polyline"]["points"]
     return route_line
@@ -50,7 +50,5 @@ def map_make():
         return r_txt
     except Exception as e:
         txt = "error:" + str(e)
-        raise txt
-
-
-# map_make()
+        print(txt)
+        return txt

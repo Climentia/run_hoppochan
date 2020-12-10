@@ -47,11 +47,12 @@ def pic_make(path ,path2):
 
 
 def streetview():
+    print("streetview loading")
     with open("./key/google_key.txt", "r") as fr:
         MY_API_KEY = fr.readline()
     URL_FORMAT = "https://maps.googleapis.com/maps/api/streetview?size={}&location={}&heading={}&pitch={}&key={}"
-    tate = "240"
-    yoko = "120"
+    tate = "640"
+    yoko = "320"
     target_dir = "./street_view/pic"
     delete_dir = "./street_view/delete"
     exist_file = os.path.exists(target_dir)
@@ -100,10 +101,10 @@ def streetview():
                 if res.status_code == 200:
                     with open(file_name, "wb") as f:
                         f.write(res.content)
-                    path1 = "./street_view/asasio.jpg"
-                    pic_make(path1, file_name)
+                #      path1 = "./street_view/asasio.jpg"
+                #     pic_make(path1, file_name)
     else:
         print("path:./data/streetview_palce.csv\nが存在しません")
 
 
-# streetview()
+streetview()

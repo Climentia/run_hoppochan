@@ -17,16 +17,19 @@ def dict(txt, username):
             id = split_list[0]
             value = split_list[1]
             cal = calorie(id, value)
-            print(str(cal))
             if cal != "error":
                 cal_sum += round(cal, 2)
             else:
                 cal_sum = "error_block_dict"
+        over_cheack = 0
         check = type(cal_sum) is str
         if check == True:
             new = "error_block_dict"
         else:
             km_sum = cal_sum/40.89
+            if km_sum > 15:
+                km_sum = 15
+                over_cheack = 1
             ex = os.path.exists("rireki/" + username + "_point.txt")
             if ex == False:
                 with open("rireki/" + username + "_point.txt", "w", encoding="utf-8") as fw:
@@ -39,7 +42,7 @@ def dict(txt, username):
                 gokei = round(float(gokei), 2)
                 gokei += km_sum
                 fw.write(str(gokei))
-                new = str(round(gokei, 2)) + "," + str(round(km_sum, 2))
+                new = str(round(gokei, 2)) + "," + str(round(km_sum, 2)) + "," + str(round(over_cheack))
                 return str(new)
     elif "：" in txt:
         txt = "error:全角文字が含まれています。半角でtweetし直してください。"

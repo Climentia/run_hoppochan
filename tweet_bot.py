@@ -15,14 +15,9 @@ place_path = "./data/place_log.csv"
 twee_path = "./data/twee_log.txt"
 
 
-def reading_block():
-    with open("./key/twitter_key.txt", "r") as fr:
-        tw_lists = fr.readlines()
-        consumer_key = tw_lists[0].strip("\n")
-        consumer_secret = tw_lists[1].strip("\n")
-        access_token_key = tw_lists[2].strip("\n")
-        access_token_secret = tw_lists[3].strip("\n")
-        Twitter_ID = tw_lists[4].strip("\n")
+# 一分おきにtwitterデーターを読み込みデータの処理を行う
+def reading_block(consumer_key, consumer_secret, access_token_key, access_token_secret, Twitter_ID):
+    # twitterAPIの処理
     auth = tweepy.OAuthHandler(consumer_key, consumer_secret)
     auth.set_access_token(access_token_key, access_token_secret)
     api = tweepy.API(auth)
@@ -32,13 +27,16 @@ def reading_block():
     H = date.hour
     DD = date.minute
     print("------------" + str(H) + ":" + str(DD) + "------------")
+    # tweetしたユーザーを確認
     for tweet in tweets:
         a = tweet.text.split("\n")
         tw_ti = tweet.created_at
         ts = date - tw_ti
         user = a[0]
-        if ts.total_seconds()-32400 <= 2400:
+        # 10分前のデータのみ読み込む
+        if ts.total_seconds()-32400 <= 120:
             nino_list.append(user)
+    # tweet一つずつで処理
     for status in api.mentions_timeline(count=3, tweet_mode='extended', timeout=55):
         # ユーザ名表示
         user = status.user.screen_name
@@ -48,7 +46,7 @@ def reading_block():
         # tweetテキスト読み込み
         txt0 = status.full_text
         td = date - zikan
-        if td.total_seconds()-32400 <= 2400:
+        if td.total_seconds()-32400 <= 120:
             print("------------reading txt------------")
             print("user   : " + username)
             print("time   : " + str(zikan))
@@ -56,19 +54,31 @@ def reading_block():
             print("------------status------------")
             print("--------------------------------------")
             user_flag = 0
+            # これまでにメンションを飛ばしたユーザーがいるか確認0=いない→0,いる→1
             for nino_user in nino_list:
                 if nino_user == username:
                     user_flag = 1
+            # リプライに基づいた処理
             if user_flag == 0:
+                # コマンド処理が含まれているか確認
                 if "comm" in txt0:
+                    # コマンド処理実行
                     txt = command_code.dict(txt0, username)
+                    # 処理結果の実行結果を返す
+                    print("------------post txt------------")
+                    print("user   : " + Twitter_ID)
+                    print(username + "\n" + txt)
+                    api.update_status(status=txt, in_reply_to_status_id=status_id)
                 else:
+                    # ランニング,筋トレ内容の処理
                     txt2 = calculation.dict(txt0, username)
+                    # errorがあるかどうか確認,無し→if文,あり→else
                     if "," in txt2:
-                        print(txt2)
                         txt_list = txt2.split(",")
                         total = txt_list[0]
                         day = txt_list[1]
+                        over = txt_list[2]
+                        # 現在保存している情報の呼び出し
                         with open(place_path, "r", encoding="utf-8") as fr_p_log:
                             lists = fr_p_log.readlines()
                             destination_list = lists[1].split(",")
@@ -77,20 +87,29 @@ def reading_block():
                             distance = distance_list[1]
                             kyori_total_list = lists[7].split(",")
                             kyori_total = kyori_total_list[1]
+                        # 一日にどれだけ進んだか確認する処理
                         twee_ch = os.path.exists(twee_path)
                         if twee_ch == False:
                             with open(twee_path, "w") as fmake:
                                 fmake.write(str(0))
                         with open(twee_path, "r") as fr_t_log:
                             tw_day = float(fr_t_log.readline())
-                        tw_day += float(day)
-                        nokori = round(float(distance) - (float(kyori_total) + float(tw_day)), 2)
-                        # kouken = round(float(total)/float(tw_day), 2)
-                        txt_kozin = "あなたは今日ほっぽちゃんを" + str(day) + "km進めました!トータルではあなたは" + str(total) + "km進めています!\n"
-                        txt_zentai = str(destination).strip("\n") + "まで残り" + str(round(float(nokori)/1000, 2)) + "kmです！"
-                        txt = txt_kozin + txt_zentai
+                        tw_day2 = float(tw_day) + float(day)
+                        print(str(distance))
+                        print(str(kyori_total))
+                        print(str(tw_day2))
+                        nokori = round(float(distance) - (float(kyori_total) + float(tw_day2)*1000), 2)
+                        if nokori < 0:
+                            txt =  "あなたは今日ほっぽちゃんを" + str(day) + "km進めました!トータルではあなたは" + str(total) + "km進めています!\n" + str(destination).strip("\n") + "にゴールしました!おめでとうございます!"
+                        else:
+                            # kouken = round(float(total)/float(tw_day), 2)
+                            txt_kozin = "あなたは今日ほっぽちゃんを" + str(day) + "km進めました!トータルではあなたは" + str(total) + "km進めています!\n"
+                            txt_zentai = str(destination).strip("\n") + "まで残り" + str(round(float(nokori)/1000, 2)) + "kmです!"
+                            if int(over) > 0:
+                                txt_zentai = txt_zentai + "\n*処理の都合上15km以上はカウントしません*"
+                            txt = txt_kozin + txt_zentai
                         with open(twee_path, "w") as fw_t_log:
-                            fw_t_log.write(str(tw_day))
+                            fw_t_log.write(str(tw_day2))
                     else:
                         txt = txt2
                     txt2 = str(txt)
@@ -105,14 +124,15 @@ def reading_block():
 
 
 def loading_block():
+    print("in_loding_block")
     # list = glob.glob("log/*")\
     with open("./key/twitter_key.txt", "r") as fr:
         tw_lists = fr.readlines()
-        consumer_key = tw_lists[0]
-        consumer_secret = tw_lists[1]
-        access_token_key = tw_lists[2]
-        access_token_secret = tw_lists[3]
-        Twitter_ID = tw_lists[4]
+        consumer_key = tw_lists[0].strip("\n")
+        consumer_secret = tw_lists[1].strip("\n")
+        access_token_key = tw_lists[2].strip("\n")
+        access_token_secret = tw_lists[3].strip("\n")
+        Twitter_ID = tw_lists[4].strip("\n")
     auth = tweepy.OAuthHandler(consumer_key, consumer_secret)
     auth.set_access_token(access_token_key, access_token_secret)
     api = tweepy.API(auth)
@@ -136,14 +156,17 @@ def loading_block():
                     print(txt)
                     print("------------status------------")
                 elif ds_flag == "finish":
-                    os.remove("place_log.csv")
+                    os.remove(place_path)
                     txt = "おめでとうございます!ゴールしました!\n次の目的地を入力してください!"
                     print("------------post txt------------")
                     print("user   : " + Twitter_ID)
                     print(txt)
                     print("------------status------------")
-                    pic_name = "./data/route_map.png"
+                    pic_name = "./data/finish.png"
                     api.update_with_media(filename=pic_name, status=txt)
+                    tweet = "ほっぽちゃんの現在位置です!"
+                    pic_name2 = "./data/route_map.png"
+                    api.update_with_media(filename=pic_name2, status=tweet)
                     shutil.rmtree("./rireki")
                     os.mkdir("./rireki")
                 else:
@@ -183,21 +206,21 @@ def loading_block():
             print("text   : "+ txt)
             print("------------status------------")
             txt = "error:ほっぽちゃんの進んだ距離が分かりません。"
-            pic_name = "./street_view/noplace.jpg"
+            pic_name = "./street_view/error.jpg"
             api.update_with_media(filename=pic_name, status=txt)
     else:
         txt = "error:ほっぽちゃんの行き先が決まっていません"
         pic_name = "./street_view/noplace.jpg"
         print("------------post txt------------")
         print("user   : " + Twitter_ID)
-        print("text   : "+ txt)
+        print("text   : " + txt)
         print("------------status------------")
         api.update_with_media(filename=pic_name, status=txt)
 
 
-def read_main():
+def read_main(consumer_key, consumer_secret, access_token_key, access_token_secret, Twitter_ID):
     try:
-        reading_block()
+        reading_block(consumer_key, consumer_secret=consumer_secret, access_token_key=access_token_key, access_token_secret=access_token_secret, Twitter_ID=Twitter_ID)
     except Exception as e:
         print("error:" + str(e))
 
@@ -209,8 +232,15 @@ def load_main():
         print("error:" + str(e))
 
 
-schedule.every().day.at("22:00").do(load_main)
-schedule.every(1).minutes.do(read_main)
+with open("./key/twitter_key.txt", "r") as fr:
+    tw_lists = fr.readlines()
+    consumer_key = tw_lists[0].strip("\n")
+    consumer_secret = tw_lists[1].strip("\n")
+    access_token_key = tw_lists[2].strip("\n")
+    access_token_secret = tw_lists[3].strip("\n")
+    Twitter_ID = tw_lists[4].strip("\n")
+schedule.every().day.at("16:05").do(loading_block)
+schedule.every(1).minutes.do(reading_block, consumer_key, consumer_secret, access_token_key, access_token_secret, Twitter_ID)
 
 while True:
     schedule.run_pending()
