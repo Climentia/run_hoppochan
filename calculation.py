@@ -25,6 +25,8 @@ def dict(txt, username):
         check = type(cal_sum) is str
         if check == True:
             new = "error_block_dict"
+            a = "error:入力が正しい形式ではありません。仕様を確認してもう一度リプライをお願いします。"
+            return str(a)
         else:
             km_sum = cal_sum/40.89
             if km_sum > 15:
