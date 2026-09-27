@@ -1,0 +1,21 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "hoppochan",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-26",
+  "assets": { "directory": "./public", "binding": "ASSETS" },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "hoppochan",
+      "database_id": "REPLACE_WITH_DATABASE_ID",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "triggers": { "crons": ["5 7 * * *"] },
+  "vars": {
+    "SITE_URL": "https://example.com",
+    "ORS_PROFILE": "foot-walking",
+    "PER_LOG_CAP_KM": "15"
+  }
+}

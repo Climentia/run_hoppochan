@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#f4f6f8">
+    <title>ほっぽちゃんの旅</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css">
+    <link rel="stylesheet" href="/style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js" defer></script>
+    <script src="/app.js" defer></script>
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href="/" aria-label="ほっぽちゃんの旅 ホーム"><span class="brand-mark">ほ</span><span>ほっぽちゃんの旅</span></a>
+      <span class="live"><span class="live-dot"></span>みんなで進行中</span>
+    </header>
+    <main>
+      <section class="hero" aria-labelledby="route-title">
+        <p class="eyebrow">みんなの運動で進む旅</p>
+        <h1 id="route-title">読み込み中…</h1>
+        <p id="route-note" class="muted">記録を読み込んでいます</p>
+        <div class="progress-track" role="progressbar" aria-label="経路の進捗" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span id="progress-fill"></span></div>
+        <div class="progress-label"><strong id="progress-text">—</strong><span id="pending-text"></span></div>
+      </section>
+
+      <section id="empty-state" class="empty card" hidden>
+        <div class="empty-icon" aria-hidden="true">⌖</div>
+        <h2>次の旅の準備中</h2>
+        <p>管理者が Discord で <code>/route</code> を実行すると、ここに経路が表示されます。</p>
+      </section>
+
+      <section id="route-content" class="route-content" hidden>
+        <div class="map-card card">
+          <div class="section-heading"><div><p class="eyebrow">ROUTE MAP</p><h2>いま歩いている道</h2></div><button id="home-button" class="text-button" hidden>現在の経路へ戻る</button></div>
+          <div id="map" role="img" aria-label="出発地から目的地までの経路地図"></div>
+        </div>
+
+        <div class="dashboard-grid">
+          <section class="card panel" aria-labelledby="ranking-title">
+            <div class="section-heading"><div><p class="eyebrow">DISTANCE RANKING</p><h2 id="ranking-title">距離ランキング</h2></div></div>
+            <div class="tabs" role="tablist" aria-label="ランキングの期間">
+              <button class="tab active" data-ranking="route" role="tab" aria-selected="true">今回の経路</button>
+              <button class="tab" data-ranking="all" role="tab" aria-selected="false">通算</button>
+            </div>
+            <ol id="ranking" class="ranking-list"></ol>
+          </section>
+          <section class="card panel" aria-labelledby="daily-title">
+            <div class="section-heading"><div><p class="eyebrow">DAILY PROGRESS</p><h2 id="daily-title">日ごとの前進</h2></div></div>
+            <div id="daily-chart" class="daily-chart" role="img" aria-label="日ごとに進んだ距離"></div>
+          </section>
+        </div>
+
+      </section>
+      <section id="history-panel" class="card panel history-panel" aria-labelledby="history-title" hidden>
+        <div class="section-heading"><div><p class="eyebrow">PAST ROUTES</p><h2 id="history-title">これまでの旅</h2></div></div>
+        <div id="history" class="history-list"></div>
+      </section>
+      <p id="load-error" class="load-error" role="alert" hidden>データを読み込めませんでした。しばらくしてから再読み込みしてください。</p>
+    </main>
+    <footer>地図データ © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a></footer>
+  </body>
+</html>
