@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#F6F1E9">
-  <title>ほっぽちゃんの旅</title>
+  <title>走れ！ほっぽちゃん</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=Zen+Maru+Gothic:wght@500;700;900&display=swap" rel="stylesheet">
@@ -13,19 +13,20 @@
 </head>
 <body>
   <header class="topbar" id="top">
-    <a class="brand" href="#top" aria-label="ほっぽちゃんの旅 ホーム">
-      <span class="brand-mark" aria-hidden="true">ほ</span><span>ほっぽちゃんの旅</span>
+    <a class="brand" href="#top" aria-label="走れ！ほっぽちゃん ホーム">
+      <span class="brand-mark" aria-hidden="true">ほ</span><span>走れ！ほっぽちゃん</span>
     </a>
     <div class="header-right">
       <span class="live"><span class="live-dot" aria-hidden="true"></span><span id="header-status">記録を読み込み中</span></span>
       <div class="header-user" id="header-user" hidden>
-        <span class="avatar" id="user-avatar" aria-hidden="true"></span><span id="user-name"></span>
+        <span class="avatar" id="user-avatar" aria-hidden="true"></span><span class="admin-pill" id="admin-pill" hidden>管理者</span><span id="user-name"></span>
         <button class="logout-button" id="logout-button" type="button">ログアウト</button>
       </div>
     </div>
   </header>
 
   <main>
+    <div class="no-route-left">
     <section class="hero" aria-labelledby="route-title">
       <div class="hero-heading">
         <p class="eyebrow">いまの旅</p>
@@ -48,11 +49,44 @@
       <div class="empty card" id="empty-state" hidden>
         <span class="empty-icon" aria-hidden="true">↗</span>
         <h2>旅のスタートを待っています</h2>
-        <p>管理者が Discord で <code>/route</code> を登録すると、ここに経路が表示されます。</p>
+        <p>管理者が経路を登録すると、ここに地図が表示されます。</p>
       </div>
     </section>
 
+    <section class="panel card history-panel" id="history-panel" aria-labelledby="history-title" hidden>
+      <h2 id="history-title">これまでの旅</h2>
+      <div class="history-list" id="history"></div>
+    </section>
+    </div>
+
+    <div class="no-route-right">
+    <section class="admin-card card" id="admin-create-card" aria-labelledby="admin-create-title" hidden>
+      <div class="admin-title"><span class="admin-pill">管理者</span><h2 id="admin-create-title">新しい旅を始める</h2></div>
+      <p>出発地と目的地を入力すると、徒歩の経路を検索して登録します。Discord の <code>/route</code> と同じ処理です。</p>
+      <form id="admin-route-form">
+        <fieldset id="admin-route-fields">
+          <label for="admin-start">出発地</label>
+          <input id="admin-start" name="start" type="text" maxlength="256" placeholder="例: 東京駅" required>
+          <label for="admin-goal">目的地</label>
+          <input id="admin-goal" name="goal" type="text" maxlength="256" placeholder="例: 横浜駅" required>
+          <button class="admin-primary" type="submit">経路を検索して登録</button>
+        </fieldset>
+        <p class="admin-note">住所や地名で検索します。見つからないときは、もう少し詳しく入力してください。</p>
+        <p class="admin-status" id="admin-route-status" role="status" aria-live="polite" hidden></p>
+        <p class="admin-error" id="admin-route-error" role="alert" aria-live="assertive" hidden></p>
+        <p class="admin-success" id="admin-route-success" role="status" aria-live="polite" hidden></p>
+      </form>
+    </section>
+
+    <section class="admin-card card" id="admin-manage-card" aria-labelledby="admin-manage-title" hidden>
+      <div class="admin-title"><span class="admin-pill">管理者</span><h2 id="admin-manage-title">旅の管理</h2></div>
+      <dl class="admin-route-details"><dt>進行中</dt><dd id="admin-current-route"></dd><dt>進み具合</dt><dd id="admin-route-progress"></dd></dl>
+      <button class="admin-cancel" id="open-cancel-dialog" type="button">この旅を中止する</button>
+      <p class="admin-note">新しい旅は、いまの旅が完走するか中止したあとに登録できます。</p>
+      <p class="admin-success" id="admin-manage-success" role="status" aria-live="polite" hidden></p>
+    </section>
     <section class="record-card card" id="record-card" aria-label="今日の運動を記録">
+      <div id="record-body">
       <div class="login-message" id="login-message" role="status" hidden>
         <span id="login-message-text"></span><button type="button" class="dismiss-button" id="dismiss-login-message" aria-label="メッセージを閉じる">×</button>
       </div>
@@ -89,7 +123,14 @@
         <p id="success-capped" hidden>1回の記録の上限を適用しました。</p>
         <button class="continue-button" id="continue-recording" type="button">続けて記録する</button>
       </section>
+      </div>
+      <div class="record-paused" id="record-paused-card" hidden>
+        <h2>今日の運動を記録</h2>
+        <p>旅が始まると、ここから記録できるようになります。</p>
+      </div>
     </section>
+
+    </div>
 
     <section class="map-card card" id="map-card" aria-labelledby="map-title" hidden>
       <div class="section-heading"><h2 id="map-title">いま歩いている道</h2><div class="map-actions"><button class="quiet-button" id="current-button" type="button">現在地へ</button><button class="quiet-button" id="fit-button" type="button">全体を表示</button></div></div>
@@ -113,14 +154,18 @@
       <div class="daily-chart" id="daily-chart" role="img" aria-label="日ごとの前進距離"></div>
     </section>
 
-    <section class="panel card history-panel" id="history-panel" aria-labelledby="history-title" hidden>
-      <h2 id="history-title">これまでの旅</h2>
-      <div class="history-list" id="history"></div>
-    </section>
-
     <p class="load-error" id="load-error" role="alert" hidden>旅の情報を読み込めませんでした。時間をおいて再度お試しください。</p>
     <button class="home-button" id="home-button" type="button" hidden>進行中の旅に戻る</button>
   </main>
+  <dialog class="cancel-dialog" id="cancel-dialog" aria-labelledby="cancel-title">
+    <section class="cancel-dialog-card">
+      <h2 id="cancel-title">この旅を中止しますか？</h2>
+      <p><strong id="cancel-route-name"></strong>（<span id="cancel-progress"></span>）を中止します。中止すると元に戻せません。</p>
+      <p class="cancel-pending-copy">これまでの記録と過去の経路は消えません。まだ反映されていない記録（<strong id="cancel-pending"></strong>）は、この旅には反映されなくなります。</p>
+      <p class="admin-error" id="cancel-error" role="alert" aria-live="assertive" hidden></p>
+      <div class="cancel-actions"><button class="cancel-abort" id="cancel-abort" type="button">やめる</button><button class="cancel-confirm" id="cancel-confirm" type="button">中止する</button></div>
+    </section>
+  </dialog>
   <footer>地図データ © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a> · <a href="/security">安全について</a></footer>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
   <script src="/app.js" defer></script>

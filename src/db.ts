@@ -67,6 +67,7 @@ export async function routeHistory(db: D1Database, excludeId?: number): Promise<
   return result.results;
 }
 
-export async function cancelRoute(db: D1Database, routeId: number): Promise<void> {
-  await db.prepare("UPDATE routes SET status = 'cancelled' WHERE id = ? AND status = 'active'").bind(routeId).run();
+export async function cancelRoute(db: D1Database, routeId: number): Promise<boolean> {
+  const result = await db.prepare("UPDATE routes SET status = 'cancelled' WHERE id = ? AND status = 'active'").bind(routeId).run();
+  return result.meta.changes > 0;
 }

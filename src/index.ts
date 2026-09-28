@@ -4,7 +4,7 @@ import { handleInteraction } from "./discord/handlers";
 import { verifyRequest } from "./discord/verify";
 import { runDaily } from "./daily";
 import type { Env } from "./env";
-import { logResponse, meResponse } from "./web";
+import { adminCancelResponse, adminRouteResponse, logResponse, meResponse } from "./web";
 
 function errorResponse(message: string, status: number): Response {
   return Response.json({ error: message }, { status, headers: { "Cache-Control": "no-store" } });
@@ -32,6 +32,8 @@ export default {
     if (url.pathname.startsWith("/auth/")) return errorResponse("Method not allowed", 405);
     if (url.pathname === "/api/me" && request.method === "GET") return meResponse(request, env);
     if (url.pathname === "/api/log" && request.method === "POST") return logResponse(request, env);
+    if (url.pathname === "/api/admin/route" && request.method === "POST") return adminRouteResponse(request, env);
+    if (url.pathname === "/api/admin/cancel" && request.method === "POST") return adminCancelResponse(request, env);
     if (url.pathname === "/api/state" && request.method === "GET") {
       try { return await stateResponse(env.DB); }
       catch (error) { console.error("State query failed", error); return errorResponse("State is unavailable", 500); }

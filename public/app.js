@@ -5,7 +5,7 @@
   const historyList = $("#history");
   let initialState;
   let displayed;
-  let me = { user: null, activities: [], kcalPerKm: 0, perLogCapKm: 15 };
+  let me = { user: null, isAdmin: false, activities: [], kcalPerKm: 0, perLogCapKm: 15 };
   let map;
   let mapLayers;
   let routeBounds;
@@ -200,7 +200,7 @@
         if (active?.id === item.id) { displayed = initialState; render(); return; }
         button.disabled = true;
         try {
-          const response = await fetch(`/api/routes/${encodeURIComponent(item.id)}`);
+          const response = await fetch(`/api/routes/${encodeURIComponent(item.id)}`, { cache: "no-store" });
           if (!response.ok) throw new Error("route fetch failed");
           displayed = await response.json();
           render();
@@ -220,6 +220,7 @@
   function renderAuth() {
     const loggedIn = Boolean(me.user);
     $("#header-user").hidden = !loggedIn;
+    $("#admin-pill").hidden = !me.isAdmin;
     $("#header-status").textContent = loggedIn ? "Discord 連携中" : "Discord でログインして記録";
     $("#user-name").textContent = me.user?.name || "";
     $("#user-avatar").textContent = [...(me.user?.name || "").trim()][0] || "?";
@@ -311,14 +312,29 @@
 
   function render() {
     const route = displayed?.route;
-    $(".hero").classList.toggle("no-route", !route);
+    const noRoute = !route;
+    $("main").classList.toggle("no-route", noRoute);
+    $("main").classList.toggle("is-admin", Boolean(me.isAdmin));
+    $(".hero").classList.toggle("no-route", noRoute);
     renderHistory();
     $("#home-button").hidden = !route || route.id === initialState?.route?.id;
     $("#route-content").hidden = !route;
-    $("#empty-state").hidden = Boolean(route);
+    $("#empty-state").hidden = !noRoute;
     $("#map-card").hidden = !route;
     $("#stats").hidden = !route;
-    if (!route) {
+    $("#record-body").hidden = noRoute;
+    $("#record-paused-card").hidden = !noRoute;
+    $("#record-card").classList.toggle("record-disabled", noRoute);
+    $("#admin-create-card").hidden = !me.isAdmin || !noRoute;
+    const active = initialState?.route;
+    $("#admin-manage-card").hidden = !me.isAdmin || !active;
+    if (active) {
+      const progress = Number(active.progressKm) || 0;
+      const total = Number(active.totalKm) || 0;
+      $("#admin-current-route").textContent = `${active.origin} → ${active.destination}`;
+      $("#admin-route-progress").textContent = `${formatKm(progress)} / ${formatKm(total)}（${(total ? progress / total * 100 : 0).toFixed(1)}%）`;
+    }
+    if (noRoute) {
       $("#route-title").textContent = "経路はまだありません";
       $("#current-place").textContent = "— あたり";
       $("#place-card").hidden = true;
@@ -345,6 +361,14 @@
     drawMap(route);
     renderRanking();
     renderDays(displayed.moves, pending);
+  }
+
+  async function refreshState() {
+    const response = await fetch("/api/state", { cache: "no-store" });
+    if (!response.ok) throw new Error("state fetch failed");
+    initialState = await response.json();
+    displayed = initialState;
+    render();
   }
 
   function showLoginMessage() {
@@ -388,7 +412,9 @@
         const result = await response.json();
         if (response.status === 401) {
           me.user = null;
+          me.isAdmin = false;
           renderAuth();
+          render();
           return;
         }
         if (!response.ok) {
@@ -402,14 +428,8 @@
         $("#success-capped").hidden = !result.capped;
         $("#record-form").hidden = true;
         $("#success-card").hidden = false;
-        try {
-          const stateResponse = await fetch("/api/state");
-          if (stateResponse.ok) {
-            initialState = await stateResponse.json();
-            displayed = initialState;
-            render();
-          }
-        } catch { /* The saved log remains successful if only the dashboard refresh fails. */ }
+        try { await refreshState(); }
+        catch { /* The saved log remains successful if only the dashboard refresh fails. */ }
       } catch {
         showRecordError("記録に失敗しました。時間をおいて再度お試しください。");
       } finally {
@@ -429,9 +449,84 @@
     $("#logout-button").addEventListener("click", async () => {
       try { await fetch("/auth/logout", { method: "POST" }); } catch { /* Clear local identity when the server cannot be reached. */ }
       me.user = null;
+      me.isAdmin = false;
       pendingItems = [];
       renderAuth();
+      render();
       renderPending();
+    });
+  }
+
+  function bindAdminForms() {
+    $("#admin-route-form").addEventListener("submit", async event => {
+      event.preventDefault();
+      const fields = $("#admin-route-fields");
+      fields.disabled = true;
+      $("#admin-route-status").textContent = "経路を検索しています…";
+      $("#admin-route-status").hidden = false;
+      $("#admin-route-error").hidden = true;
+      $("#admin-route-success").hidden = true;
+      $("#admin-manage-success").hidden = true;
+      try {
+        const response = await fetch("/api/admin/route", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ start: $("#admin-start").value.trim(), goal: $("#admin-goal").value.trim() })
+        });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || "経路を登録できませんでした。");
+        const message = `経路を登録しました: ${result.origin} → ${result.destination}（${Number(result.totalKm).toFixed(2)} km）`;
+        $("#admin-route-status").hidden = true;
+        $("#admin-route-success").textContent = message;
+        $("#admin-route-success").hidden = false;
+        $("#admin-manage-success").textContent = message;
+        $("#admin-manage-success").hidden = false;
+        try { await refreshState(); }
+        catch { $("#admin-route-error").textContent = "経路を登録しましたが、最新の状態を読み込めませんでした。ページを再読み込みしてください。"; $("#admin-route-error").hidden = false; }
+      } catch (error) {
+        $("#admin-route-status").hidden = true;
+        $("#admin-route-error").textContent = error instanceof Error ? error.message : "経路を登録できませんでした。";
+        $("#admin-route-error").hidden = false;
+      } finally { fields.disabled = false; }
+    });
+
+    const dialog = $("#cancel-dialog");
+    let trigger;
+    $("#open-cancel-dialog").addEventListener("click", event => {
+      const route = initialState?.route;
+      if (!route) return;
+      trigger = event.currentTarget;
+      $("#cancel-route-name").textContent = `${route.origin} → ${route.destination}`;
+      $("#cancel-progress").textContent = `${formatKm(route.progressKm)} / ${formatKm(route.totalKm)}`;
+      $("#cancel-pending").textContent = formatKm(route.pendingKm);
+      $("#cancel-error").hidden = true;
+      dialog.showModal();
+    });
+    dialog.addEventListener("close", () => {
+      if (trigger?.isConnected) trigger.focus();
+      trigger = null;
+    });
+    $("#cancel-abort").addEventListener("click", () => dialog.close());
+    $("#cancel-confirm").addEventListener("click", async () => {
+      const route = initialState?.route;
+      if (!route) return;
+      const buttons = dialog.querySelectorAll("button");
+      buttons.forEach(button => { button.disabled = true; });
+      $("#cancel-error").hidden = true;
+      try {
+        const response = await fetch("/api/admin/cancel", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ routeId: route.id })
+        });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || "経路を中止できませんでした。");
+        dialog.close();
+        $("#admin-manage-success").hidden = true;
+        try { await refreshState(); }
+        catch { $("#load-error").hidden = false; }
+      } catch (error) {
+        $("#cancel-error").textContent = error instanceof Error ? error.message : "経路を中止できませんでした。";
+        $("#cancel-error").hidden = false;
+      } finally { buttons.forEach(button => { button.disabled = false; }); }
     });
   }
 
@@ -454,8 +549,9 @@
 
   showLoginMessage();
   bindRecordForm();
+  bindAdminForms();
   Promise.all([
-    fetch("/api/state").then(response => { if (!response.ok) throw new Error("state fetch failed"); return response.json(); }),
+    fetch("/api/state", { cache: "no-store" }).then(response => { if (!response.ok) throw new Error("state fetch failed"); return response.json(); }),
     fetch("/api/me").then(response => response.ok ? response.json() : null).catch(() => null)
   ]).then(([state, userData]) => {
     initialState = state;

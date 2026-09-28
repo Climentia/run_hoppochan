@@ -3,7 +3,7 @@ import { positionAt, thinPoints, type Point } from "./geo";
 
 const json = (body: unknown, status = 200): Response => Response.json(body, {
   status,
-  headers: { "Cache-Control": "public, max-age=60" }
+  headers: { "Cache-Control": "no-cache" }
 });
 
 async function routeState(db: D1Database, row: RouteRow, includeHistory: boolean): Promise<Record<string, unknown>> {

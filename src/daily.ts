@@ -62,7 +62,7 @@ function webhookPayload(route: RouteRow, input: {
     : `${route.origin_name} から ${route.destination_name} へ進行中です。`;
   return {
     allowed_mentions: { parse: [] },
-    embeds: [{ title: "ほっぽちゃんの日次進捗", description, url: input.siteUrl, fields, color: input.finished ? 0x2ecc71 : 0xe74c3c }]
+    embeds: [{ title: "走れ！ほっぽちゃんの日次進捗", description, url: input.siteUrl, fields, color: input.finished ? 0x2ecc71 : 0xe74c3c }]
   };
 }
 

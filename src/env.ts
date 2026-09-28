@@ -11,4 +11,5 @@ export interface Env {
   SITE_URL: string;
   ORS_PROFILE: string;
   PER_LOG_CAP_KM: string;
+  ADMIN_USER_IDS: string;
 }

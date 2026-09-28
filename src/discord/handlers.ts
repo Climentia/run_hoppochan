@@ -1,8 +1,9 @@
-import { activeRoute, cancelRoute, createRoute, pendingKm } from "../db";
+import { activeRoute, cancelRoute, pendingKm } from "../db";
 import { parseRecord } from "../exercise";
 import type { Env } from "../env";
 import { logRecord, perLogCap } from "../log";
-import { getRoute, RouteUserError } from "../ors";
+import { RouteUserError } from "../ors";
+import { registerRoute, RouteConflictError, RouteRegistrationFailure, routeRegistrationError, validateRouteInput } from "../route";
 import { editOriginal } from "./api";
 
 type Option = { name: string; value?: string };
@@ -66,28 +67,26 @@ export async function handleInteraction(interaction: Interaction, env: Env, ctx:
   }
 
   if (name === "route") {
-    const start = option(interaction, "start")?.trim();
-    const goal = option(interaction, "goal")?.trim();
-    if (!start || !goal || start.length > 256 || goal.length > 256) return reply("出発地と目的地を 1〜256 文字で入力してください。", true);
+    let input: { start: string; goal: string };
+    try { input = validateRouteInput(option(interaction, "start"), option(interaction, "goal")); }
+    catch (error) { return reply(error instanceof RouteUserError ? error.message : routeRegistrationError, true); }
     if (!interaction.token) return reply("応答トークンがありません。", true);
     const token = interaction.token;
     const applicationId = env.DISCORD_APPLICATION_ID;
     ctx.waitUntil((async () => {
       try {
-        if (await activeRoute(env.DB)) throw new RouteUserError("すでに進行中の経路があります。先に /cancel を実行してください。");
-        const route = await getRoute(start, goal, env.ORS_API_KEY, env.ORS_PROFILE || "foot-walking");
-        const id = await createRoute(env.DB, { ...route, createdBy: userId });
+        const route = await registerRoute(env.DB, env, input, userId);
         await editOriginal(applicationId, token, { content: `経路を登録しました: ${route.origin} → ${route.destination}（${(route.totalM / 1000).toFixed(2)} km）\n${env.SITE_URL}`, allowed_mentions: { parse: [] } });
-        console.log("Route registered", id);
+        console.log("Route registered", userId, route.id);
       } catch (error) {
         let message: string;
         if (error instanceof RouteUserError) message = error.message;
-        else if (String(error).includes("UNIQUE constraint failed: routes.status")) {
-          console.error("Concurrent route registration rejected", error);
-          message = "すでに進行中の経路があります。先に /cancel を実行してください。";
+        else if (error instanceof RouteConflictError) {
+          console.error("Concurrent route registration rejected", userId, error.cause);
+          message = error.message;
         } else {
-          console.error("Route registration failed", error);
-          message = "経路登録に失敗しました。時間をおいて再度お試しください。";
+          console.error("Route registration failed", userId, error instanceof RouteRegistrationFailure ? error.cause : error);
+          message = routeRegistrationError;
         }
         try { await editOriginal(applicationId, token, { content: `経路登録に失敗しました: ${message}`, allowed_mentions: { parse: [] } }); }
         catch (followupError) { console.error("Route response failed", followupError); }
@@ -99,7 +98,8 @@ export async function handleInteraction(interaction: Interaction, env: Env, ctx:
   if (name === "cancel") {
     const route = await activeRoute(env.DB);
     if (!route) return reply("キャンセルする進行中の経路がありません。", true);
-    await cancelRoute(env.DB, route.id);
+    if (!await cancelRoute(env.DB, route.id)) return reply("キャンセルする進行中の経路がありません。", true);
+    console.log("Route cancelled", userId, route.id);
     return reply(`経路「${route.origin_name} → ${route.destination_name}」をキャンセルしました。`);
   }
 

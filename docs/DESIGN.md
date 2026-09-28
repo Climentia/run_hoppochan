@@ -1,4 +1,4 @@
-# 設計書: ほっぽちゃん v3（Discord + Cloudflare 版）
+# 設計書: 走れ！ほっぽちゃん（Discord + Cloudflare 版）
 
 旧版（Twitter bot / Python / 常駐プロセス）を、**Discord スラッシュコマンド + Cloudflare Workers + D1 + 静的サイト** に作り替える。
 すべて無料枠で動作し、常駐サーバーを持たないことを要件とする。旧版の仕様は `legacy/README.md` を参照。
@@ -85,6 +85,7 @@ Browser ──POST /api/log (session cookie)────────────
 | `SITE_URL` | var | 日次投稿に載せるサイト URL |
 | `ORS_PROFILE` | var | 既定 `foot-walking`（走る企画なので徒歩経路） |
 | `PER_LOG_CAP_KM` | var | 1 回の記録で加算できる上限。既定 `15` |
+| `ADMIN_USER_IDS` | var | サイト経路操作を許可する Discord ユーザー ID のカンマ区切り。既定は空（管理者なし） |
 
 `DISCORD_BOT_TOKEN` は `scripts/register-commands.mjs` を手元で実行するときだけ環境変数で渡し、Worker には置かない。
 
@@ -194,9 +195,9 @@ CREATE TABLE moves (
 
 ## 9. Web サイト
 
-### 9.1 API: `GET /api/state`
+### 9.1 API: state and past routes
 
-`Cache-Control: public, max-age=60`。レスポンス:
+`GET /api/state` と `GET /api/routes/:id` は `Cache-Control: no-cache`。state のレスポンス:
 
 ```jsonc
 {
@@ -231,17 +232,18 @@ CREATE TABLE moves (
 - access token は callback リクエスト内だけで使用し、保存・ログ出力しない。名前は guild nick → global_name → username の順で選ぶ。
 - `/auth/login` はランダム state を 10 分の `HttpOnly; Secure; SameSite=Lax` Cookie に保存する。callback は Cookie と query の state を定時間比較する。
 - 認証後は `{uid, name, exp}` を JSON 化して base64url にし、HMAC-SHA256 署名と連結した 30 日有効の `hoppo_session` Cookie を発行する。署名不一致・期限切れは未ログインとして扱う。ログアウトで Cookie を消去する。
-- `GET /api/me` はユーザー名、`exercise.ts` 由来の種目・有効単位・kcal 係数、kcal/km 換算値、および per-log km cap を返す。`activities` の係数は画面に複製しない。
+- `GET /api/me` はユーザー名、管理者かどうか、`exercise.ts` 由来の種目・有効単位・kcal 係数、kcal/km 換算値、および per-log km cap を返す。`activities` の係数は画面に複製しない。
 - `POST /api/log` は有効な session、`application/json`、`Origin === new URL(SITE_URL).origin` を要求する。1〜10 件の `{activity, amount, unit}` を検証し、`src/log.ts` で Discord `/log` と同じ cap・D1 保存・累計・残距離処理を行う。記録者の Discord user ID を共有するためランキングも統合される。
-- `/api/me`, `/api/log`, `/auth/*` は `Cache-Control: no-store`。OAuth state / session cookie と API response に access token は含めない。
+- `/api/admin/route` と `/api/admin/cancel` は同じ Origin / JSON guard と session を要求し、各リクエストで `ADMIN_USER_IDS` を照合する。経路検索・登録は Discord `/route` と共通の `src/route.ts` を使う。
+- `/api/me`, `/api/log`, `/api/admin/*`, `/auth/*` は `Cache-Control: no-store`。OAuth state / session cookie と API response に access token は含めない。
 
 ## 10. セキュリティ・品質
 
 - `/interactions` は署名検証（`X-Signature-Ed25519`, `X-Signature-Timestamp`、`crypto.subtle` の `Ed25519`）を **本文パース前** に行う。
 - 権限は Discord 側の `default_member_permissions` に加え、Worker 側でも `member.permissions` に MANAGE_GUILD ビットがあるか検証する。
 - SQL はすべてプレースホルダ。ユーザー入力を Discord に返すときは `allowed_mentions: { parse: [] }` を付け、@everyone 等を無効化。
-- `/api/log` は有効な署名付きセッションと同一 Origin の JSON のみ受け付ける。セッション Cookie は `HttpOnly; Secure; SameSite=Lax` とし、秘密値・token・cookie はログ出力しない。
-- OAuth access token は callback 内でだけ使い、D1 や Cookie に保存しない。API と OAuth の応答には `Cache-Control: no-store` を付ける。
+- `/api/log` と `/api/admin/*` は有効な署名付きセッションと同一 Origin の JSON のみ受け付ける。経路操作はさらに `ADMIN_USER_IDS` を毎回照合する。セッション Cookie は `HttpOnly; Secure; SameSite=Lax` とし、秘密値・token・cookie はログ出力しない。
+- OAuth access token は callback 内でだけ使い、D1 や Cookie に保存しない。OAuth の応答には `Cache-Control: no-store` を付ける。
 - ORS / Discord への fetch は失敗時に例外で Worker を落とさず、ユーザーへエラーメッセージを返す。
 - ORS 無料枠（directions 2000/日, geocode 1000/日）を超えないよう、`/api/state` からは ORS を呼ばない。
 
