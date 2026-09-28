@@ -3,6 +3,9 @@ export interface Env {
   ASSETS: Fetcher;
   DISCORD_PUBLIC_KEY: string;
   DISCORD_APPLICATION_ID: string;
+  DISCORD_CLIENT_SECRET: string;
+  SESSION_SECRET: string;
+  DISCORD_GUILD_ID: string;
   DISCORD_WEBHOOK_URL: string;
   ORS_API_KEY: string;
   SITE_URL: string;

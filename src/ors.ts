@@ -2,6 +2,9 @@ import { cumulativeDistances, thinPoints, type Point } from "./geo";
 
 type JsonObject = Record<string, unknown>;
 const object = (value: unknown): JsonObject | null => value !== null && typeof value === "object" ? value as JsonObject : null;
+const SEARCH_URL = "https://api.heigit.org/pelias/v1/search";
+const REVERSE_URL = "https://api.heigit.org/pelias/v1/reverse";
+const DIRECTIONS_URL = "https://api.heigit.org/openrouteservice/v2/directions";
 
 export class RouteUserError extends Error {}
 
@@ -21,7 +24,7 @@ async function orsJson(url: URL, apiKey: string, init?: RequestInit): Promise<Js
 }
 
 async function geocode(place: string, apiKey: string): Promise<{ label: string; point: Point }> {
-  const url = new URL("https://api.openrouteservice.org/geocode/search");
+  const url = new URL(SEARCH_URL);
   url.search = new URLSearchParams({ text: place, size: "1" }).toString();
   const root = await orsJson(url, apiKey);
   const features = Array.isArray(root.features) ? root.features : [];
@@ -39,7 +42,7 @@ export async function getRoute(start: string, goal: string, apiKey: string, prof
   origin: string; destination: string; points: Point[]; cumulative: number[]; totalM: number;
 }> {
   const [origin, destination] = await Promise.all([geocode(start, apiKey), geocode(goal, apiKey)]);
-  const url = new URL(`https://api.openrouteservice.org/v2/directions/${encodeURIComponent(profile)}/geojson`);
+  const url = new URL(`${DIRECTIONS_URL}/${encodeURIComponent(profile)}/geojson`);
   const root = await orsJson(url, apiKey, {
     method: "POST",
     headers: { "content-type": "application/json" },
@@ -67,7 +70,7 @@ export async function getRoute(start: string, goal: string, apiKey: string, prof
 }
 
 export async function reverseGeocode(point: Point, apiKey: string): Promise<string | null> {
-  const url = new URL("https://api.openrouteservice.org/geocode/reverse");
+  const url = new URL(REVERSE_URL);
   url.search = new URLSearchParams({ "point.lat": String(point[0]), "point.lon": String(point[1]), size: "1" }).toString();
   try {
     const root = await orsJson(url, apiKey);

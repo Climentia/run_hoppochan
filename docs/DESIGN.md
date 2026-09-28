@@ -13,6 +13,7 @@
 | R4 | Web サイトで「経路・現在地・進んだ区間」を地図表示し、メンバーごとの距離ランキングと日別推移を可視化する |
 | R5 | 費用ゼロ（Cloudflare 無料プラン、OpenRouteService 無料キー、OSM タイル）。クレジットカード登録が必要なサービスは使わない |
 | R6 | ストリートビュー／動画生成は行わない（旧版から削除） |
+| R7 | Discord サーバーメンバーは OAuth ログイン後に Web から記録でき、Discord `/log` と共通の本人 ID・保存処理を使う |
 
 ## 2. アーキテクチャ
 
@@ -23,11 +24,14 @@ Cron "5 7 * * *" (UTC) ──▶ Worker(scheduled)
                                    │
             Discord Webhook ◀──────┘ 日次投稿
 Browser ──▶ Worker static assets (public/)  ──fetch /api/state──▶ Worker(fetch)
-外部 API: OpenRouteService (geocode/search, geocode/reverse, v2/directions)
+Browser ──Discord OAuth2──▶ /auth/login, /auth/callback ──▶ Discord API
+Browser ──POST /api/log (session cookie)───────────────────▶ D1
+外部 API: HeiGIT OpenRouteService (`api.heigit.org/pelias/v1`, `api.heigit.org/openrouteservice/v2/directions`)
 ```
 
 - 単一の Cloudflare Worker（TypeScript, ES Modules）。静的ファイルは Workers Static Assets（`public/`）で配信。
 - `/interactions` と `/api/*` はファイルとして存在しないので Worker に届く（`run_worker_first` は不要）。
+- `/auth/*` も Worker で処理する。
 - 外部ライブラリは最小限。ランタイム依存は **0 個** を目標にする（Ed25519 検証は WebCrypto、polyline デコードは自前実装）。
 
 ## 3. リポジトリ構成
@@ -49,12 +53,17 @@ Browser ──▶ Worker static assets (public/)  ──fetch /api/state──�
 │   ├── discord/handlers.ts # 各コマンドの処理
 │   ├── discord/api.ts      # followup / webhook 送信
 │   ├── exercise.ts         # 運動記録のパースとカロリー計算（純粋関数）
+│   ├── log.ts              # Discord / Web 共通の記録保存処理
+│   ├── session.ts          # HMAC 署名付き Web セッション Cookie
+│   ├── auth.ts             # Discord OAuth2 login/callback/logout
+│   ├── request.ts          # Origin / Content-Type guard
+│   ├── web.ts              # /api/me, /api/log
 │   ├── geo.ts              # haversine、累積距離、距離→座標の補間、polyline decode（純粋関数）
 │   ├── ors.ts              # OpenRouteService クライアント
 │   ├── db.ts               # D1 アクセス関数
 │   ├── daily.ts            # 日次前進処理
 │   └── api.ts              # /api/state
-├── test/                   # vitest（exercise, geo, verify, daily のロジック）
+├── test/                   # vitest（exercise, geo, verify, daily, session, request, log）
 ├── package.json, tsconfig.json, wrangler.jsonc, vitest.config.ts
 ├── .dev.vars.example
 └── README.md               # 新版のセットアップ・運用手順（旧 README は legacy/ へ）
@@ -68,6 +77,9 @@ Browser ──▶ Worker static assets (public/)  ──fetch /api/state──�
 | `ASSETS` | assets binding | 静的ファイル |
 | `DISCORD_PUBLIC_KEY` | secret | 署名検証用（hex） |
 | `DISCORD_APPLICATION_ID` | secret | followup 送信に使用 |
+| `DISCORD_CLIENT_SECRET` | secret | Discord OAuth2 code exchange |
+| `SESSION_SECRET` | secret | セッション HMAC-SHA256 署名。ランダムな 32 バイト以上 |
+| `DISCORD_GUILD_ID` | var | Web 記録を許可する Discord サーバー ID |
 | `DISCORD_WEBHOOK_URL` | secret | 日次投稿先チャンネルの Webhook |
 | `ORS_API_KEY` | secret | OpenRouteService |
 | `SITE_URL` | var | 日次投稿に載せるサイト URL |
@@ -166,8 +178,8 @@ CREATE TABLE moves (
 
 ## 7. 経路登録（`src/ors.ts`）
 
-1. `GET https://api.openrouteservice.org/geocode/search?text=<start>&size=1`（ヘッダ `Authorization: <ORS_API_KEY>`）で出発地・目的地を座標化。見つからなければエラー返信。表示名は `features[0].properties.label`。
-2. `POST https://api.openrouteservice.org/v2/directions/<ORS_PROFILE>/geojson`、body `{"coordinates":[[lng,lat],[lng,lat]]}`。`features[0].geometry.coordinates`（[lng,lat] 順）と `properties.summary.distance`(m) を使う。
+1. `GET https://api.heigit.org/pelias/v1/search?text=<start>&size=1`（ヘッダ `Authorization: <ORS_API_KEY>`）で出発地・目的地を座標化。見つからなければエラー返信。表示名は `features[0].properties.label`。
+2. `POST https://api.heigit.org/openrouteservice/v2/directions/<ORS_PROFILE>/geojson`、body `{"coordinates":[[lng,lat],[lng,lat]]}`。`features[0].geometry.coordinates`（[lng,lat] 順）と `properties.summary.distance`(m) を使う。
 3. 点列を [lat,lng] に並べ替え、2000 点を超える場合は等間隔に間引く（始点・終点は必ず残す）。累積距離は haversine（R = 6371008.8 m）で自前計算し、`total_m` は自前計算値の最終要素とする（地図表示と進捗計算の整合性を優先）。
 4. ORS がエラー（到達不能・距離上限超過など）を返したら、その `error.message` を含めてユーザーに返す。
 
@@ -175,7 +187,7 @@ CREATE TABLE moves (
 
 1. active 経路がなければ何もしない（投稿もしない）。
 2. `applied_move_id IS NULL` の logs を合計。0 km なら「今日は誰も走っていません」と Webhook 投稿して終了（moves は作らない）。
-3. `to_m = min(progress_m + sum_km*1000, total_m)`。`positionAt(points, cum_m, to_m)` で座標を出し、ORS `geocode/reverse?point.lat=&point.lon=&size=1` で地名取得（失敗しても処理は続行し place_name は NULL）。
+3. `to_m = min(progress_m + sum_km*1000, total_m)`。`positionAt(points, cum_m, to_m)` で座標を出し、HeiGIT `https://api.heigit.org/pelias/v1/reverse?point.lat=&point.lon=&size=1` で地名取得（失敗しても処理は続行し place_name は NULL）。
 4. **1 つの `DB.batch()`** で: moves INSERT、該当 logs の `applied_move_id` 更新、routes の `progress_m` 更新（到達時は `status='finished', finished_at=now`）。`UNIQUE(route_id, move_date)` に当たったら既に実行済みとして何もしない。
 5. Webhook 投稿（embeds 1 つ）: 今日の距離、貢献者トップ 3、現在地、残り km、進捗率、サイト URL。ゴール時はお祝い文と総合ランキングを投稿し、「`/route` で次の目的地を登録してください」と案内。
 6. 手動実行用に `POST /api/admin/run-daily` は **作らない**（認証を増やさない）。ローカルでは `wrangler dev --test-scheduled` の `/__scheduled` を使う。
@@ -206,20 +218,30 @@ CREATE TABLE moves (
 
 ### 9.2 画面（`public/`）
 
-- ビルド不要のプレーン HTML/CSS/JS。外部読み込みは Leaflet（`https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/`）のみ。
-- 地図: OSM 標準タイル（`https://tile.openstreetmap.org/{z}/{x}/{y}.png`、attribution 必須）。経路全体を灰色、進んだ区間を赤で描画し、現在地にマーカー。全体が収まるよう fitBounds。
-- ヘッダ: 「出発地 → 目的地」、進捗バー（% と km）、未反映 km（「次回 16:05 に反映」）。
-- メンバーランキング: 横棒グラフ（CSS のみ、ライブラリなし）。タブで「今回の経路 / 通算」を切替。
-- 日別推移: 日ごとの前進 km の縦棒グラフ（CSS or 素の SVG）。
-- 過去の経路一覧: クリックでその経路を表示。
-- ライト／ダーク両対応（`prefers-color-scheme`）、幅 375px のスマホで横スクロールしない。
-- 経路未登録時は「`/route` で目的地を登録してください」と表示。
+- ビルド不要のプレーン HTML/CSS/JS。Leaflet は cdnjs、地図タイルは OSM を使い attribution を表示。フォントは Google Fonts の Zen Maru Gothic / Noto Sans JP。
+- 画面は 760px 以下で縦 1 列（hero → 記録 → map → 4 stat tiles → ranking → daily chart → history）、広い画面では 2 列。デスクトップは右列上部に記録カードを置く。
+- 地図は未反映区間を破線、反映済み区間を accent 色で描き、スタート・ゴール・現在地に常時ラベルを付ける。「現在地へ」「全体を表示」で表示範囲を変更する。
+- 進捗バーは進行距離と未反映距離を重ねて表示。stat tiles は未反映 km、次回 16:05 JST までの時間、参加人数、移動平均からのゴール予想を表示。
+- ランキングは今回 / 通算を切替え、日別チャートは直近 7 回の前進距離と未反映の当日分を表示。過去経路を選ぶと `/api/routes/:id` の内容に切り替える。
+- 画面色は CSS custom properties で定義し、`prefers-color-scheme: dark` の配色も提供する。操作要素はキーボードフォーカスと 44px 以上のタッチ領域を持つ。
+
+### 9.3 Discord OAuth と Web 記録
+
+- Discord OAuth2 の Redirect URI は `${SITE_URL}/auth/callback`。scope は `identify guilds.members.read`。callback で code を access token と交換し、`GET /users/@me/guilds/{DISCORD_GUILD_ID}/member` が成功したユーザーのみ許可する。
+- access token は callback リクエスト内だけで使用し、保存・ログ出力しない。名前は guild nick → global_name → username の順で選ぶ。
+- `/auth/login` はランダム state を 10 分の `HttpOnly; Secure; SameSite=Lax` Cookie に保存する。callback は Cookie と query の state を定時間比較する。
+- 認証後は `{uid, name, exp}` を JSON 化して base64url にし、HMAC-SHA256 署名と連結した 30 日有効の `hoppo_session` Cookie を発行する。署名不一致・期限切れは未ログインとして扱う。ログアウトで Cookie を消去する。
+- `GET /api/me` はユーザー名、`exercise.ts` 由来の種目・有効単位・kcal 係数、kcal/km 換算値、および per-log km cap を返す。`activities` の係数は画面に複製しない。
+- `POST /api/log` は有効な session、`application/json`、`Origin === new URL(SITE_URL).origin` を要求する。1〜10 件の `{activity, amount, unit}` を検証し、`src/log.ts` で Discord `/log` と同じ cap・D1 保存・累計・残距離処理を行う。記録者の Discord user ID を共有するためランキングも統合される。
+- `/api/me`, `/api/log`, `/auth/*` は `Cache-Control: no-store`。OAuth state / session cookie と API response に access token は含めない。
 
 ## 10. セキュリティ・品質
 
 - `/interactions` は署名検証（`X-Signature-Ed25519`, `X-Signature-Timestamp`、`crypto.subtle` の `Ed25519`）を **本文パース前** に行う。
 - 権限は Discord 側の `default_member_permissions` に加え、Worker 側でも `member.permissions` に MANAGE_GUILD ビットがあるか検証する。
 - SQL はすべてプレースホルダ。ユーザー入力を Discord に返すときは `allowed_mentions: { parse: [] }` を付け、@everyone 等を無効化。
+- `/api/log` は有効な署名付きセッションと同一 Origin の JSON のみ受け付ける。セッション Cookie は `HttpOnly; Secure; SameSite=Lax` とし、秘密値・token・cookie はログ出力しない。
+- OAuth access token は callback 内でだけ使い、D1 や Cookie に保存しない。API と OAuth の応答には `Cache-Control: no-store` を付ける。
 - ORS / Discord への fetch は失敗時に例外で Worker を落とさず、ユーザーへエラーメッセージを返す。
 - ORS 無料枠（directions 2000/日, geocode 1000/日）を超えないよう、`/api/state` からは ORS を呼ばない。
 
@@ -228,6 +250,7 @@ CREATE TABLE moves (
 - `exercise.ts`: 正常系（各単位、全角入力、複数項目、改行区切り）、異常系（未知の種目、単位不一致、負数、空）、上限切り詰め。
 - `geo.ts`: haversine の既知値、`positionAt` の端点・中間・範囲外、polyline 間引きで端点が残ること。
 - `discord/verify.ts`: テスト用に生成した Ed25519 鍵ペアで正しい署名 → true、改ざん → false。
+- `session.ts`, `request.ts`, `log.ts`: 署名・改ざん・期限・cookie parsing、Origin/Content-Type、未ログイン応答、記録検証と cap をテストする。
 - `daily.ts`: 前進距離の計算・ゴール判定を純粋関数に切り出してテスト（D1 はモック不要な設計にする）。
 - `npm test` と `npx tsc --noEmit` が通ること。
 
@@ -236,10 +259,10 @@ CREATE TABLE moves (
 1. `npm install`
 2. `npx wrangler d1 create hoppochan` → 出力の `database_id` を `wrangler.jsonc` に記入
 3. `npx wrangler d1 migrations apply hoppochan --remote`
-4. Discord Developer Portal でアプリ作成 → Public Key / Application ID / Bot Token を取得
+4. Discord Developer Portal でアプリ作成 → Public Key / Application ID / OAuth2 Client Secret を取得し、記録対象サーバー ID を控える
 5. OpenRouteService で無料 API キー取得
-6. `npx wrangler secret put DISCORD_PUBLIC_KEY` など各 secret を登録
-7. `npx wrangler deploy` → 表示された URL + `/interactions` を Developer Portal の Interactions Endpoint URL に設定
-8. `DISCORD_APPLICATION_ID=... DISCORD_BOT_TOKEN=... node scripts/register-commands.mjs`
+6. `DISCORD_PUBLIC_KEY`, `DISCORD_APPLICATION_ID`, `DISCORD_CLIENT_SECRET`, `SESSION_SECRET`, `ORS_API_KEY` を Worker Secrets に登録。`SESSION_SECRET` は 32 バイト以上のランダム値にする
+7. `wrangler.jsonc` の `DISCORD_GUILD_ID` と `SITE_URL` を設定して deploy。Developer Portal の Interactions Endpoint に `<SITE_URL>/interactions`、OAuth2 Redirects に `<SITE_URL>/auth/callback` を登録
+8. OAuth2 scopes は `identify guilds.members.read`。`DISCORD_APPLICATION_ID=... DISCORD_BOT_TOKEN=... node scripts/register-commands.mjs`
 9. Bot をサーバーに招待（scope: `applications.commands`）、投稿チャンネルで Webhook を作り `DISCORD_WEBHOOK_URL` に登録
-10. ローカル開発: `.dev.vars` を作成し `npx wrangler dev`、`npx wrangler d1 migrations apply hoppochan --local`
+10. ローカル開発: `.dev.vars` を作成し `npx wrangler dev`、`npx wrangler d1 migrations apply hoppochan --local`。OAuth Redirects に localhost の `/auth/callback` も追加

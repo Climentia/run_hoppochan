@@ -1,6 +1,6 @@
 # ほっぽちゃん v3
 
-Discord のスラッシュコマンドで運動記録を距離に換算し、Cloudflare Workers と D1 で経路上の進捗を管理します。Web サイトでは OSM 地図、ランキング、日ごとの前進、過去経路を確認できます。常駐サーバーやランタイム依存パッケージは使いません。
+Discord のスラッシュコマンドと OAuth ログイン後の Web フォームで運動記録を受け付け、Cloudflare Workers と D1 で経路上の進捗を管理します。Web サイトでは OSM 地図、ランキング、日ごとの前進、過去経路を確認できます。常駐サーバーやランタイム依存パッケージは使いません。
 
 旧 Python 版は [`legacy/README.md`](legacy/README.md)、現行設計は [`docs/DESIGN.md`](docs/DESIGN.md) を参照してください。
 
@@ -33,17 +33,19 @@ Discord のスラッシュコマンドで運動記録を距離に換算し、Clo
    npx wrangler d1 migrations apply hoppochan --remote
    ```
 
-4. Discord Developer Portal でアプリケーションを作成し、Application ID と Public Key を控えます。Bot Token はコマンド登録時だけ使用し、Worker の Secret には登録しません。OpenRouteService で API キーも取得します。
+4. Discord Developer Portal でアプリケーションを作成し、Application ID、Public Key、OAuth2 Client Secret を控えます。OAuth2 の scopes は `identify` と `guilds.members.read` です。`DISCORD_GUILD_ID` は記録を許可するサーバーの ID です。Bot Token はコマンド登録時だけ使用し、Worker の Secret には登録しません。OpenRouteService で API キーも取得します（接続先は HeiGIT の `api.heigit.org` です）。
 
 5. Worker の Secret を登録します。各コマンドの実行後、値を入力してください。
 
    ```sh
    npx wrangler secret put DISCORD_PUBLIC_KEY
    npx wrangler secret put DISCORD_APPLICATION_ID
+   npx wrangler secret put DISCORD_CLIENT_SECRET
+   npx wrangler secret put SESSION_SECRET
    npx wrangler secret put ORS_API_KEY
    ```
 
-   `SITE_URL` は `wrangler.jsonc` の var です。初回 deploy 後に表示される Worker URL を設定し、もう一度 deploy します。
+   `SESSION_SECRET` には 32 バイト以上のランダムな値を設定します。たとえば `openssl rand -base64 48` で値を生成し、`wrangler secret put SESSION_SECRET` の入力欄へ貼り付けます。`DISCORD_GUILD_ID` と `SITE_URL` は `wrangler.jsonc` の vars です。初回 deploy 後に表示される Worker URL を `SITE_URL` に設定し、その URL に `/auth/callback` を付けた完全一致の URI を Discord Developer Portal の OAuth2 Redirects に登録します。その後、もう一度 deploy します。
 
 6. Worker を deploy します。
 
@@ -92,7 +94,7 @@ Discord のスラッシュコマンドで運動記録を距離に換算し、Clo
    cp .dev.vars.example .dev.vars
    ```
 
-   `.dev.vars` は Git 管理対象外です。各項目をローカル用の値で置き換えてください。
+   `.dev.vars` は Git 管理対象外です。Discord Client Secret と 32 バイト以上のランダムな Session Secret を含め、各項目をローカル用の値で置き換えてください。`DISCORD_GUILD_ID` と `SITE_URL` はローカル Worker の値に合わせて `wrangler.jsonc` に設定します。Discord Developer Portal の Redirects にローカル URL の `/auth/callback` も登録してください。
 
 2. ローカル D1 にマイグレーションを適用します。
 
@@ -118,3 +120,11 @@ npm run deploy     # Cloudflare Workers へ deploy
 ```
 
 Cron は `wrangler.jsonc` の `5 7 * * *`（UTC）です。日次処理を任意に起動する管理用 HTTP endpoint はありません。
+
+## Web 記録と OAuth
+
+- `/auth/login` と `/auth/callback` で Discord OAuth2 ログインを行います。サーバーのメンバー確認後に 30 日有効の署名付き `hoppo_session` Cookie を発行します。Discord access token は保存しません。
+- `/auth/logout` は同一 Origin の POST でログアウトします。
+- `GET /api/me` はログイン状態、種目・単位ごとの kcal 係数、1 記録あたりの上限を返します。
+- `POST /api/log` は同一 Origin の JSON と有効なセッションを要求し、Discord `/log` と同じ検証・換算・保存処理を使います。
+- Cloudflare の Worker Secrets に `DISCORD_CLIENT_SECRET` と `SESSION_SECRET` を設定し、`wrangler.jsonc` の `DISCORD_GUILD_ID` に対象サーバー ID を設定してください。ローカル開発では `.dev.vars` に Secrets を設定します。

@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#F6F1E9">
+  <title>安全について · ほっぽちゃんの旅</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=Zen+Maru+Gothic:wght@500;700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body class="security-page">
+  <header class="topbar" id="top">
+    <a class="brand" href="/" aria-label="ほっぽちゃんの旅 ホーム">
+      <span class="brand-mark" aria-hidden="true">ほ</span><span>ほっぽちゃんの旅</span>
+    </a>
+    <a class="security-return" href="/">地図にもどる</a>
+  </header>
+
+  <main class="security-main">
+    <section class="security-intro" aria-labelledby="security-title">
+      <p class="eyebrow">安全について</p>
+      <h1 id="security-title">Discord ログインで何が起きるか、ぜんぶ書きます</h1>
+      <p>ほっぽちゃんの旅は、個人が趣味で開発・運営しているサイトです。だからこそ、Discord と連携するときに受け取る情報・保存する情報・しくみを、隠さずここにまとめています。</p>
+    </section>
+
+    <section class="security-highlights" aria-labelledby="security-highlights-title">
+      <h2 class="sr-only" id="security-highlights-title">ログインのポイント</h2>
+      <article class="security-card">
+        <span class="security-icon" aria-hidden="true"><svg aria-hidden="true" focusable="false" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"></rect><path d="M8 11V7a4 4 0 0 1 8 0v4"></path></svg></span>
+        <h3>パスワードは受け取りません</h3>
+        <p>ログインは Discord の公式ページで行います。このサイトにパスワードが入力・送信されることはありません。</p>
+      </article>
+      <article class="security-card">
+        <span class="security-icon" aria-hidden="true"><svg aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M3 3l18 18"></path><path d="M10.6 5.1A10 10 0 0 1 12 5c6 0 9.5 7 9.5 7a17 17 0 0 1-3 3.9M6.6 6.6A17 17 0 0 0 2.5 12S6 19 12 19a9.6 9.6 0 0 0 4.4-1.1"></path></svg></span>
+        <h3>メッセージは見えません</h3>
+        <p>このサイトは、あなたのメッセージ、DM、フレンド、ほかのサーバーの中身を取得しません。</p>
+      </article>
+      <article class="security-card">
+        <span class="security-icon" aria-hidden="true"><svg aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M4 20l4-1 11-11-3-3L5 16z"></path><path d="M3 3l18 18"></path></svg></span>
+        <h3>あなたの代わりに投稿しません</h3>
+        <p>OAuth ログインで許可される範囲は「読み取り」だけです。あなたの Discord アカウントで発言・操作する権限はありません。</p>
+      </article>
+    </section>
+
+    <section class="security-section" aria-labelledby="login-flow-title">
+      <h2 id="login-flow-title">ログインの流れ</h2>
+      <ol class="security-steps">
+        <li><span><strong>Discord の公式ページで許可</strong><span>「Discord でログイン」を押すと discord.com に移動します。表示される許可内容を確認して「認証」を押します。</span></span></li>
+        <li><span><strong>サーバーのメンバーか確認</strong><span>Discord から一時的なアクセストークンを受け取り、このサーバーのメンバーかどうかを確認して、ユーザー名とニックネームを受け取ります。</span></span></li>
+        <li><span><strong>確認後、ログイン完了</strong><span>アクセストークンはメンバー確認に使い、記録や Cookie には保存しません。以後は署名付きの Cookie でログイン状態を保ちます。</span></span></li>
+      </ol>
+    </section>
+
+    <div class="security-columns">
+      <section class="security-section" aria-labelledby="received-title">
+        <h2 id="received-title">Discord から受け取る情報</h2>
+        <p>許可を求める範囲は <code>identify</code> と <code>guilds.members.read</code> の2つだけです。</p>
+        <ul class="security-list">
+          <li><span class="security-check" aria-hidden="true">✓</span><span>ユーザーID・ユーザー名・表示名</span></li>
+          <li><span class="security-check" aria-hidden="true">✓</span><span>このサーバーのメンバーかどうか・ニックネーム</span></li>
+          <li><span class="security-cross" aria-hidden="true">×</span><span>メールアドレス・パスワード</span></li>
+          <li><span class="security-cross" aria-hidden="true">×</span><span>メッセージ・DM・フレンド・ほかのサーバーの情報</span></li>
+        </ul>
+      </section>
+
+      <section class="security-section" aria-labelledby="stored-title">
+        <h2 id="stored-title">このサイトに保存するもの</h2>
+        <ul class="security-list">
+          <li><span class="security-check" aria-hidden="true">✓</span><span>Discord のユーザーID<small>記録を同じ人としてまとめるため</small></span></li>
+          <li><span class="security-check" aria-hidden="true">✓</span><span>表示名<small>ランキングに表示するため</small></span></li>
+          <li><span class="security-check" aria-hidden="true">✓</span><span>運動の記録<small>種目・量・単位・カロリー・距離・記録日時</small></span></li>
+          <li><span class="security-cross" aria-hidden="true">×</span><span>Discord のアクセストークン<small>記録や Cookie には保存しません</small></span></li>
+          <li><span class="security-cross" aria-hidden="true">×</span><span>IP アドレスや端末の情報<small>アプリの記録用データには保存しません</small></span></li>
+        </ul>
+      </section>
+    </div>
+
+    <section class="security-section" aria-labelledby="safeguards-title">
+      <h2 id="safeguards-title">しくみの安全対策</h2>
+      <ul class="security-list">
+        <li><span class="security-check" aria-hidden="true">✓</span><span>外部サービスへの接続は HTTPS を使用し、ログイン Cookie に Secure 属性を付けています。</span></li>
+        <li><span class="security-check" aria-hidden="true">✓</span><span>ログイン状態は署名付きの Cookie<small>HttpOnly・Secure・SameSite=Lax を設定し、ページ内のスクリプトからは読めません。30日で失効し、ログアウトで削除します。</small></span></li>
+        <li><span class="security-check" aria-hidden="true">✓</span><span>ログイン時のなりすまし対策<small>毎回ランダムな確認コード（state）を照合します。</small></span></li>
+        <li><span class="security-check" aria-hidden="true">✓</span><span>記録とログアウトの送信元を確認<small>記録にはログインが必要で、記録・ログアウトのリクエストは Origin も確認します。</small></span></li>
+        <li><span class="security-check" aria-hidden="true">✓</span><span>Discord コマンドは Ed25519 署名を検証<small>署名を検証できない Discord interaction は受け付けません。</small></span></li>
+        <li><span class="security-check" aria-hidden="true">✓</span><span>認証用の秘密情報はサーバー側で管理<small>この Worker に Discord Bot トークンは置かず、Discord への通知には Webhook を使います。</small></span></li>
+      </ul>
+      <p class="security-note">ログイン時にメンバー確認を1回行い、その後は再確認しません。サーバーを抜けても、ログイン状態は最長30日で切れます。</p>
+    </section>
+
+    <section class="security-section" aria-labelledby="services-title">
+      <h2 id="services-title">使っている外部サービス</h2>
+      <dl class="security-definitions">
+        <dt>Cloudflare</dt><dd>サイトの配信とデータベース（記録の保存先）</dd>
+        <dt>Discord（discord.com）</dt><dd>ログインと Discord コマンドの送受信</dd>
+        <dt>OpenStreetMap（tile.openstreetmap.org）</dt><dd>地図の画像。表示のためブラウザから直接取得するので、IP アドレスが相手に届きます。</dd>
+        <dt>Google Fonts（fonts.googleapis.com・fonts.gstatic.com）</dt><dd>サイトで使うフォント</dd>
+        <dt>cdnjs（cdnjs.cloudflare.com）</dt><dd>地図表示ライブラリ Leaflet の読み込み</dd>
+        <dt>OpenRouteService（api.heigit.org）</dt><dd>管理者が経路を登録するときの場所検索・経路検索と、毎日の前進後にほっぽちゃんの現在地の地名を調べるとき。地名や座標だけを送信し、メンバーの情報や運動記録は送信しません。</dd>
+      </dl>
+    </section>
+
+    <section class="security-section" aria-labelledby="unlink-title">
+      <h2 id="unlink-title">連携の解除・記録の削除</h2>
+      <ol class="security-unlink-steps">
+        <li>Discord の「ユーザー設定」を開く</li>
+        <li>「認証済みアプリ」を開く</li>
+        <li>「[Discord アプリ名]」の「認証解除」を押す<!-- TODO(owner): Discord の認証済みアプリに表示されるアプリ名を記入してください。 --></li>
+      </ol>
+      <p>この操作は Discord 側の認証許可を解除します。すでに発行済みのログイン状態は、ログアウトするか最長30日で切れるまで記録に使えることがあります（有効中はメンバー確認を再実行しません）。保存済みの記録の削除を希望する場合は、下の連絡先に Discord のユーザー名を添えて連絡してください。</p>
+    </section>
+
+    <section class="security-contact" aria-labelledby="contact-title">
+      <h2 id="contact-title">運営者・お問い合わせ</h2>
+      <dl class="security-definitions">
+        <dt>運営</dt><dd>[運営者の名前・ハンドル]（個人開発）<!-- TODO(owner): 運営者の名前またはハンドルを記入してください。 --></dd>
+        <dt>連絡先</dt><dd>[Discord ユーザー名 または メールアドレス]<!-- TODO(owner): 問い合わせ先を記入してください。 --></dd>
+        <dt>ソース</dt><dd>[ソースコードの URL（公開する場合）]<!-- TODO(owner): 公開する場合はソースコードURLを記入してください。 --></dd>
+      </dl>
+      <p class="security-updated">最終更新: [YYYY年M月D日]<!-- TODO(owner): 公開前に最終更新日を記入してください。 --></p>
+    </section>
+  </main>
+
+  <footer>地図データ © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a> · <a href="/">地図にもどる</a></footer>
+</body>
+</html>

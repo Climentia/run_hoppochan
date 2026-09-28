@@ -1,6 +1,7 @@
-import { activeRoute, cancelRoute, createRoute, pendingKm, recordLog, userKm } from "../db";
-import { kcalToKm, parseRecord } from "../exercise";
+import { activeRoute, cancelRoute, createRoute, pendingKm } from "../db";
+import { parseRecord } from "../exercise";
 import type { Env } from "../env";
+import { logRecord, perLogCap } from "../log";
 import { getRoute, RouteUserError } from "../ors";
 import { editOriginal } from "./api";
 
@@ -33,22 +34,16 @@ export async function handleInteraction(interaction: Interaction, env: Env, ctx:
 
   if (name === "log") {
     const input = option(interaction, "record") ?? "";
-    const parsed = parseRecord(input);
-    if (!parsed.ok) return reply(`${parsed.errors.join("\n")}\n例: 腹筋:30回 ランニング:3km`, true);
-    const route = await activeRoute(env.DB);
-    if (!route) return reply("経路が登録されていません。管理者に /route を実行してもらってください。", true);
-    const configuredCap = Number(env.PER_LOG_CAP_KM);
-    const converted = kcalToKm(parsed.kcal, Number.isFinite(configuredCap) && configuredCap > 0 ? configuredCap : 15);
-    await recordLog(env.DB, {
-      routeId: route.id, userId, userName: user.global_name ?? user.username ?? "メンバー",
-      kcal: parsed.kcal, km: converted.km, capped: converted.capped, detail: JSON.stringify(parsed.items)
+    const result = await logRecord(env.DB, {
+      userId, userName: user.global_name ?? user.username ?? "メンバー",
+      parsed: parseRecord(input), capKm: perLogCap(env.PER_LOG_CAP_KM)
     });
-    const [totalKm, pending] = await Promise.all([userKm(env.DB, route.id, user.id), pendingKm(env.DB, route.id)]);
-    const estimatedRemaining = Math.max(0, (route.total_m - route.progress_m) / 1000 - pending);
+    if (!result.ok && result.kind === "invalid") return reply(`${result.errors.join("\n")}\n例: 腹筋:30回 ランニング:3km`, true);
+    if (!result.ok) return reply(result.message, true);
     return reply([
-      `記録しました: ${converted.km.toFixed(2)} km${converted.capped ? "（1回の上限を適用）" : ""}`,
-      `この経路での累計: ${totalKm.toFixed(2)} km`,
-      `未反映分を含めた目的地まで: ${estimatedRemaining.toFixed(2)} km`
+      `記録しました: ${result.km.toFixed(2)} km${result.capped ? "（1回の上限を適用）" : ""}`,
+      `この経路での累計: ${result.userTotalKm.toFixed(2)} km`,
+      `未反映分を含めた目的地まで: ${result.remainingKm.toFixed(2)} km`
     ].join("\n"));
   }
 

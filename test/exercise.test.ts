@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { kcalToKm, parseRecord } from "../src/exercise";
+import { activityOptions, kcalToKm, parseRecord, parseRecordItems } from "../src/exercise";
 
 describe("exercise records", () => {
   it("parses units, aliases, full width input, and multiple lines", () => {
@@ -27,5 +27,14 @@ describe("exercise records", () => {
     expect(parseRecord("ランニング:2回").ok).toBe(false);
     expect(parseRecord("").ok).toBe(false);
     expect(kcalToKm(40.89 * 20, 15)).toEqual({ km: 15, capped: true });
+  });
+
+  it("exports the web form's unit factors from the same activity table", () => {
+    expect(activityOptions.find(activity => activity.activity === "ランニング")?.units).toEqual([
+      { unit: "分", kcalFactor: 7.28 }, { unit: "km", kcalFactor: 40.89 }
+    ]);
+    expect(parseRecordItems([{ activity: "プランク", amount: 30, unit: "回" }])).toEqual({
+      ok: false, errors: ["「プランク:30回」は種目と単位の組み合わせが使えません"]
+    });
   });
 });
