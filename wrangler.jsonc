@@ -1,0 +1,25 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "hoppochan",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-26",
+  "workers_dev": true,
+  "preview_urls": false,
+  "assets": { "directory": "./public", "binding": "ASSETS" },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "hoppochan",
+      "database_id": "da0f3ab4-c616-4004-81f7-baea89107ad6",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "triggers": { "crons": ["5 7 * * *"] },
+  "vars": {
+    "SITE_URL": "https://hoppochan.climentia.workers.dev",
+    "DISCORD_GUILD_ID": "451000034587181056",
+    "ORS_PROFILE": "foot-walking",
+    "PER_LOG_CAP_KM": "15",
+    "ADMIN_USER_IDS": "246936948718043137"
+  }
+}

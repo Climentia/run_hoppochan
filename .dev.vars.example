@@ -1,0 +1,9 @@
+DISCORD_PUBLIC_KEY=取得したDiscord Public Key
+DISCORD_APPLICATION_ID=Discord Application ID
+DISCORD_CLIENT_SECRET=Discord OAuth2 Client Secret
+SESSION_SECRET=openssl-rand-base64-48で生成した32バイト以上の値
+DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/...
+ORS_API_KEY=OpenRouteService API key
+DISCORD_GUILD_ID=記録を許可するDiscordサーバーID
+# 管理者のDiscordユーザーID（カンマ区切り、空欄なら管理者なし）
+ADMIN_USER_IDS=
